@@ -68,10 +68,9 @@ class MCTSAgent:
         """Выбирает лучшее действие с помощью MCTS с параллелизацией."""
         print(f"--- AI choose_action called for state (Street {game_state.street}) ---")
         sys.stdout.flush()
-        gs = game_state # Используем gs для краткости
+        gs = game_state
 
-        # Определяем игрока, для которого выбираем ход
-        player_to_act = gs._get_player_to_move() # Используем метод из MCTSNode для консистентности
+        player_to_act = gs._get_player_to_move()
 
         if player_to_act == -1:
              print("Error: choose_action determined no player to act. Returning None.")
@@ -137,14 +136,8 @@ class MCTSAgent:
         try:
             with multiprocessing.Pool(processes=self.num_workers) as pool:
                 while time.time() - start_time < self.time_limit:
-                    # --- Selection ---
-                    # print("MCTS: Selection phase...") # Слишком много логов
                     path, leaf_node = self._select(root_node)
-                    if leaf_node is None:
-                         # print("MCTS: Selection failed.")
-                         continue
-
-                    # print(f"MCTS: Selected leaf node (Depth: {len(path)-1}, Terminal: {leaf_node.is_terminal()})")
+                    if leaf_node is None: continue
 
                     results = []
                     simulation_actions_aggregated = set()
@@ -152,19 +145,12 @@ class MCTSAgent:
                     expanded_node = None
 
                     if not leaf_node.is_terminal():
-                        # --- Expansion ---
                         if leaf_node.untried_actions:
-                             # print("MCTS: Expansion phase...")
                              expanded_node = leaf_node.expand()
                              if expanded_node:
-                                  # print("MCTS: Node expanded.")
                                   node_to_rollout_from = expanded_node
                                   path.append(expanded_node)
-                             # else: print("MCTS: Expansion failed (no actions or error).")
 
-
-                        # --- Parallel Rollouts ---
-                        # print(f"MCTS: Rollout phase from node (Depth: {len(path)-1})...")
                         try:
                             node_state_dict = node_to_rollout_from.game_state.to_dict()
                         except Exception as e:
@@ -189,15 +175,12 @@ class MCTSAgent:
                                 print(f"Warning: Error getting result from worker: {e}")
                                 sys.stdout.flush()
 
-                    else: # Лист терминальный
-                        # print("MCTS: Leaf node is terminal.")
+                    else:
                         reward = leaf_node.game_state.get_terminal_score()
                         results.append(reward)
                         num_simulations += 1
 
-                    # --- Backpropagation ---
                     if results:
-                        # print("MCTS: Backpropagation phase...")
                         total_reward_from_batch = sum(results)
                         num_rollouts_in_batch = len(results)
                         if expanded_node and expanded_node.action:
@@ -210,16 +193,15 @@ class MCTSAgent:
              sys.stdout.flush()
              print("Choosing random action due to MCTS error.")
              return random.choice(initial_actions) if initial_actions else None
-        finally:
-             # Убедимся, что пул закрыт, даже если была ошибка
-             # Контекстный менеджер 'with' должен это делать автоматически
-             pass
 
         elapsed_time = time.time() - start_time
-        print(f"MCTS finished: Ran {num_simulations} simulations in {elapsed_time:.3f}s ({num_simulations/elapsed_time:.1f} sims/s if elapsed_time > 0 else 0} sims/s) using {self.num_workers} workers.")
+        # --- ИСПРАВЛЕННАЯ СТРОКА ---
+        sims_per_sec = (num_simulations / elapsed_time) if elapsed_time > 0 else 0
+        print(f"MCTS finished: Ran {num_simulations} simulations in {elapsed_time:.3f}s ({sims_per_sec:.1f} sims/s) using {self.num_workers} workers.")
+        # --- КОНЕЦ ИСПРАВЛЕНИЯ ---
         sys.stdout.flush()
 
-        # --- Выбор лучшего хода (ИСПРАВЛЕННЫЙ БЛОК) ---
+        # --- Выбор лучшего хода (исправленный блок) ---
         if not root_node.children:
             print("Warning: No children found in root node after MCTS, choosing random initial action.")
             sys.stdout.flush()
@@ -228,12 +210,11 @@ class MCTSAgent:
         best_action_robust = None
         max_visits = -1
         items = list(root_node.children.items())
-        random.shuffle(items) # Случайность при равных посещениях
+        random.shuffle(items)
 
         print(f"Evaluating {len(items)} child nodes...")
         sys.stdout.flush()
         for action, child_node in items:
-            # print(f"  Action: {self._format_action(action)}, Visits: {child_node.visits}") # Отладка
             if child_node.visits > max_visits:
                 max_visits = child_node.visits
                 best_action_robust = action
@@ -241,9 +222,7 @@ class MCTSAgent:
         if best_action_robust is None:
              print("Warning: Could not determine best action based on visits (all 0?), choosing first shuffled.")
              sys.stdout.flush()
-             # items уже перемешан, берем первое действие
              best_action_robust = items[0][0] if items else (random.choice(initial_actions) if initial_actions else None)
-
 
         if best_action_robust:
              print(f"Selected action based on max visits ({max_visits}): {self._format_action(best_action_robust)}")
@@ -256,11 +235,12 @@ class MCTSAgent:
 
     def _select(self, node: MCTSNode) -> Tuple[List[MCTSNode], Optional[MCTSNode]]:
         """Фаза выбора узла для расширения/симуляции."""
+        # (Код без изменений)
         path = [node]
         current_node = node
         while not current_node.is_terminal():
             player_to_move = current_node._get_player_to_move()
-            if player_to_move == -1: return path, current_node # Терминальный или нет ходов
+            if player_to_move == -1: return path, current_node
 
             if current_node.untried_actions is None:
                  current_node.untried_actions = current_node.game_state.get_legal_actions_for_player(player_to_move)
@@ -271,14 +251,13 @@ class MCTSAgent:
                          current_node.rave_total_reward[act] = 0.0
 
             if current_node.untried_actions:
-                return path, current_node # Узел для расширения
+                return path, current_node
 
             if not current_node.children:
-                 return path, current_node # Лист
+                 return path, current_node
 
             selected_child = current_node.uct_select_child(self.exploration, self.rave_k)
             if selected_child is None:
-                # print(f"Warning: Selection returned None child from node {current_node}. Returning node as leaf.")
                 if current_node.children:
                      try: selected_child = random.choice(list(current_node.children.values()))
                      except IndexError: return path, current_node
@@ -290,11 +269,12 @@ class MCTSAgent:
 
     def _backpropagate_parallel(self, path: List[MCTSNode], total_reward: float, num_rollouts: int, simulation_actions: Set[Any]):
         """Фаза обратного распространения для параллельных роллаутов."""
+        # (Код без изменений)
         if num_rollouts == 0: return
 
         for node in reversed(path):
             node.visits += num_rollouts
-            node.total_reward += total_reward # Награда всегда с точки зрения P0
+            node.total_reward += total_reward
 
             player_to_move_from_node = node._get_player_to_move()
             if player_to_move_from_node != -1:
@@ -313,7 +293,7 @@ class MCTSAgent:
 
     def _format_action(self, action: Any) -> str:
         """Форматирует действие для вывода."""
-        # (Код форматирования без изменений)
+        # (Код без изменений)
         if action is None: return "None"
         try:
             if isinstance(action, tuple) and len(action) == 3 and \
