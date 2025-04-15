@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 import itertools
-# --- ИЗМЕНЕНИЕ: Импортируем корневой Card и его утилиты ---
+# --- ИСПРАВЛЕНО: Добавлен импорт List и Optional из typing ---
+from typing import List, Optional
+
+# Импортируем корневой Card и его утилиты
 try:
     from card import Card as CardUtils # Используем алиас
     from card import Card as RootCard # Для ясности, что это корневой
@@ -32,7 +35,7 @@ except ImportError:
                  for i in CardUtils.INT_RANKS:
                      if rankbits & (1 << i): p *= CardUtils.PRIMES[i]
                  return p
-         RootCard = CardUtils # Используем ту же заглушку
+         RootCard = CardUtils
 
 # Используем относительный импорт для LookupTable внутри пакета evaluator
 from .ofc_5card_lookup import LookupTable
@@ -45,12 +48,12 @@ class Evaluator(object):
 
     def __init__(self):
         self.table = LookupTable()
-        # Убрали _six и _seven, т.к. OFC использует только 5 карт
         self.hand_size_map = {
             5 : self._five,
         }
 
-    def evaluate(self, cards: List[int]) -> int: # Принимает список int
+    # --- ИСПРАВЛЕНО: Используем импортированный List ---
+    def evaluate(self, cards: List[int]) -> int:
         """
         This is the function that the user calls to get a hand rank for 5 cards.
         Input: List of 5 integer card representations from root card.py.
@@ -58,68 +61,56 @@ class Evaluator(object):
         """
         if len(cards) != 5:
              raise ValueError("OFC 5-card evaluator requires exactly 5 cards.")
-        # Проверяем, что все элементы - целые числа
         if not all(isinstance(c, int) for c in cards):
              raise TypeError(f"OFC 5-card evaluator requires integer card representations. Got: {[type(c) for c in cards]}")
 
         return self._five(cards)
 
-    def _five(self, cards: List[int]) -> int: # Принимает список int
+    # --- ИСПРАВЛЕНО: Используем импортированный List ---
+    def _five(self, cards: List[int]) -> int:
         """
         Performs an evalution given cards in integer form, mapping them to
         a rank in the range [1, 7462], with lower ranks being more powerful.
         """
-        # Check for flush using the suit bits (0xF000 mask)
         is_flush = (cards[0] & cards[1] & cards[2] & cards[3] & cards[4] & 0xF000)
 
         if is_flush:
-            # Calculate the bitmask for ranks involved in the flush
-            # Shift right by 16 to isolate the rank bits
             handOR = (cards[0] | cards[1] | cards[2] | cards[3] | cards[4]) >> 16
-            # --- ИЗМЕНЕНИЕ: Используем CardUtils из корневого card.py ---
             prime = CardUtils.prime_product_from_rankbits(handOR)
-            # Lookup in the flush table
             rank = self.table.flush_lookup.get(prime)
             if rank is None:
-                 # Fallback for safety, though ideally shouldn't happen
-                 # print(f"Warning: Flush prime product {prime} not found in flush_lookup. Falling back.")
                  prime_unsuited = CardUtils.prime_product_from_hand(cards)
                  rank = self.table.unsuited_lookup.get(prime_unsuited, LookupTable.MAX_HIGH_CARD + 1)
             return rank
         else:
-            # Calculate the prime product for non-flush hands
-            # --- ИЗМЕНЕНИЕ: Используем CardUtils из корневого card.py ---
             prime = CardUtils.prime_product_from_hand(cards)
-            # Lookup in the unsuited table
-            return self.table.unsuited_lookup.get(prime, LookupTable.MAX_HIGH_CARD + 1) # Return worst rank if not found
+            return self.table.unsuited_lookup.get(prime, LookupTable.MAX_HIGH_CARD + 1)
 
     def get_rank_class(self, hr: int) -> int:
         """
         Returns the class of hand (integer) given the hand rank.
         Uses constants from LookupTable.
         """
-        if hr >= 1 and hr <= LookupTable.MAX_STRAIGHT_FLUSH: # 10
+        if hr >= 1 and hr <= LookupTable.MAX_STRAIGHT_FLUSH:
             return LookupTable.MAX_TO_RANK_CLASS[LookupTable.MAX_STRAIGHT_FLUSH]
-        elif hr <= LookupTable.MAX_FOUR_OF_A_KIND: # 166
+        elif hr <= LookupTable.MAX_FOUR_OF_A_KIND:
             return LookupTable.MAX_TO_RANK_CLASS[LookupTable.MAX_FOUR_OF_A_KIND]
-        elif hr <= LookupTable.MAX_FULL_HOUSE: # 322
+        elif hr <= LookupTable.MAX_FULL_HOUSE:
             return LookupTable.MAX_TO_RANK_CLASS[LookupTable.MAX_FULL_HOUSE]
-        elif hr <= LookupTable.MAX_FLUSH: # 1599
+        elif hr <= LookupTable.MAX_FLUSH:
             return LookupTable.MAX_TO_RANK_CLASS[LookupTable.MAX_FLUSH]
-        elif hr <= LookupTable.MAX_STRAIGHT: # 1609
+        elif hr <= LookupTable.MAX_STRAIGHT:
             return LookupTable.MAX_TO_RANK_CLASS[LookupTable.MAX_STRAIGHT]
-        elif hr <= LookupTable.MAX_THREE_OF_A_KIND: # 2467
+        elif hr <= LookupTable.MAX_THREE_OF_A_KIND:
             return LookupTable.MAX_TO_RANK_CLASS[LookupTable.MAX_THREE_OF_A_KIND]
-        elif hr <= LookupTable.MAX_TWO_PAIR: # 3325
+        elif hr <= LookupTable.MAX_TWO_PAIR:
             return LookupTable.MAX_TO_RANK_CLASS[LookupTable.MAX_TWO_PAIR]
-        elif hr <= LookupTable.MAX_PAIR: # 6185
+        elif hr <= LookupTable.MAX_PAIR:
             return LookupTable.MAX_TO_RANK_CLASS[LookupTable.MAX_PAIR]
-        elif hr <= LookupTable.MAX_HIGH_CARD: # 7462
+        elif hr <= LookupTable.MAX_HIGH_CARD:
             return LookupTable.MAX_TO_RANK_CLASS[LookupTable.MAX_HIGH_CARD]
         else:
-            # Handle cases where rank might be outside expected range (e.g., fallback value)
             print(f"Warning: Invalid hand rank {hr} in get_rank_class. Returning High Card class.")
-            # Возвращаем класс для High Card (обычно 9)
             return LookupTable.MAX_TO_RANK_CLASS.get(LookupTable.MAX_HIGH_CARD, 9)
 
 
