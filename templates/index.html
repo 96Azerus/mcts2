@@ -3,23 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <title>OFC Pineapple AI</title>
-    <!-- Адаптация под мобильные устройства -->
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <!-- Подключаем SortableJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <style>
         /* Общие стили */
         :root {
-            /* Уменьшаем размеры для лучшего отображения на мобильных */
             --card-width: 40px; --card-height: 60px; --card-font-size: 12px;
             --card-rank-font-size: 1.1em; --card-suit-font-size: 0.8em;
             --row-gap: 5px; --row-min-height: 70px; --table-padding: 8px;
             --hand-area-padding: 8px; --hand-gap: 5px;
         }
-        html { box-sizing: border-box; -webkit-tap-highlight-color: transparent; /* Убираем синюю подсветку при тапе */ }
+        html { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         *, *:before, *:after { box-sizing: inherit; }
-        body { margin: 0; padding: 10px; font-family: Arial, sans-serif; background-color: #f0f0f0; overflow-x: hidden; min-height: 100vh; padding-bottom: 130px; /* Увеличил отступ снизу */ display: flex; flex-direction: column; }
+        body { margin: 0; padding: 10px; font-family: Arial, sans-serif; background-color: #f0f0f0; overflow-x: hidden; min-height: 100vh; padding-bottom: 130px; display: flex; flex-direction: column; }
         button { padding: 10px 15px; font-size: 14px; border: none; border-radius: 5px; cursor: pointer; background-color: #4CAF50; color: white; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); -webkit-tap-highlight-color: transparent; }
         button:hover:not(:disabled) { background-color: #45a049; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
         button:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
@@ -43,31 +40,29 @@
             font-size: var(--card-font-size); font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
             position: relative; flex-shrink: 0;
             transition: transform 0.2s, box-shadow 0.2s, border 0.2s;
-            user-select: none; -webkit-user-select: none; /* Отключаем выделение текста */
-            touch-action: none; /* Отключаем стандартные действия браузера при касании (важно!) */
-            border: 1px solid #bbb; /* Сделал рамку чуть виднее */
+            user-select: none; -webkit-user-select: none;
+            touch-action: none;
+            border: 1px solid #bbb;
             padding: 1px;
-            cursor: grab; /* Курсор для перетаскивания */
+            cursor: grab;
         }
         .card span:first-child { font-size: var(--card-rank-font-size); }
         .card span:last-child { font-size: var(--card-suit-font-size); margin-top: 1px; }
         .card[data-suit="♥"], .card[data-suit="♦"] { color: #e44145; }
         .card[data-suit="♣"], .card[data-suit="♠"] { color: #2d2d2d; }
-        /* Стили для перетаскивания SortableJS */
-        .card.sortable-ghost { opacity: 0.4; background: #cce; /* Стиль для "тени" карты */ }
-        .card.sortable-chosen { cursor: grabbing; /* Курсор при перетаскивании */ }
+        .card.sortable-ghost { opacity: 0.4; background: #cce; }
+        .card.sortable-chosen { cursor: grabbing; }
         .card.selected { border: 2px solid #dc3545 !important; background-color: rgba(220, 53, 69, 0.1); }
         .card-slot { width: var(--card-width); height: var(--card-height); border: 1px dashed rgba(255,255,255,0.3); border-radius: 4px; flex-shrink: 0; transition: background-color 0.3s ease; display: flex; justify-content: center; align-items: center; }
         .card-slot.available { border: 2px dashed #aaffaa; }
-        /* Подсветка слота, куда можно бросить карту */
         .card-slot.sortable-drag-over-target { background-color: rgba(170, 255, 170, 0.4); border-style: solid; }
-        .card-slot .card { cursor: default; } /* Карты в слотах не перетаскиваются по умолчанию */
-        .card-slot .card.placed-this-turn { cursor: grab; } /* Карты, размещенные в этом ходу, можно вернуть */
+        .card-slot .card { cursor: default; }
+        .card-slot .card.placed-this-turn { cursor: grab; }
 
         /* Область руки и сброса */
         #hand-area { position: fixed; bottom: 0; left: 0; right: 0; background: #e0e0e0; padding: var(--hand-area-padding); display: flex; flex-direction: column; justify-content: center; gap: 8px; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); min-height: 90px; align-items: center;}
         #hand { display: flex; justify-content: center; gap: var(--hand-gap); flex-wrap: wrap; min-height: 70px; width: 100%; }
-        #hand .card.placed { display: none; } /* Карты, помеченные как placed, скрываются из руки */
+        #hand .card.placed { display: none; }
         #fl-discard-area { margin-top: 5px; text-align: center; width: 100%; }
         #fl-discard-area span { font-size: 12px; color: #555; display: block; margin-bottom: 5px; }
         #fl-discard-options { display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; }
@@ -77,11 +72,10 @@
 
         /* Сообщения и оверлей */
         .message-area { text-align: center; margin-bottom: 10px; font-weight: bold; color: #333; min-height: 20px; font-size: 14px;}
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1005; display: flex; justify-content: center; align-items: center; color: white; font-size: 1.5em; display: none; /* СКРЫТ ПО УМОЛЧАНИЮ */ }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1005; display: flex; justify-content: center; align-items: center; color: white; font-size: 1.5em; display: none; }
 
         /* --- Мобильная адаптация --- */
         @media (max-width: 640px) {
-             /* Размеры уже уменьшены в :root */
             body { padding-bottom: 130px; padding-left: 5px; padding-right: 5px; }
             .controls button { padding: 8px 12px; font-size: 14px; }
             .player-label { font-size: 12px; }
@@ -144,9 +138,9 @@
     let currentGameState = null;
     let humanPlayerIndex = 0;
     let placedCardsMap = new Map(); // cardStr -> { element, row, index, isFinal }
-    let selectedCardToDiscardElement = null; // Для улиц 2-5
-    let flDiscardSelection = new Set(); // cardStr - для ФЛ
-    let sortableInstances = {}; // Хранилище для экземпляров SortableJS
+    let selectedCardToDiscardElement = null;
+    let flDiscardSelection = new Set();
+    let sortableInstances = {};
 
     // --- Ссылки на DOM элементы ---
     const readyButton = document.getElementById('ready-button');
@@ -235,8 +229,7 @@
             if (rowElement) {
                 sortableInstances[rowName] = new Sortable(rowElement, {
                     ...sortableOptions,
-                    // Важно: Запрещаем сортировку ВНУТРИ рядов доски
-                    sort: false,
+                    sort: false, // Запрещаем сортировку внутри рядов доски
                 });
             }
         });
@@ -248,8 +241,8 @@
         const toList = event.to;
         const fromList = event.from;
         const cardStr = itemEl.dataset.card;
-        const oldIndex = event.oldDraggableIndex; // Используем oldDraggableIndex для корректного индекса в исходном списке
-        const newIndex = event.newDraggableIndex; // Используем newDraggableIndex для корректного индекса в целевом списке
+        const oldIndex = event.oldDraggableIndex;
+        const newIndex = event.newDraggableIndex;
 
         document.querySelectorAll('.sortable-drag-over-target').forEach(el => el.classList.remove('sortable-drag-over-target'));
 
@@ -257,43 +250,39 @@
 
         const targetIsHand = toList.id === 'hand';
         const sourceIsHand = fromList.id === 'hand';
-        // Определяем цель как слот, если toList - это ряд (top, middle, bottom)
-        const targetIsSlot = toList.classList.contains('row');
-        const sourceIsSlot = fromList.classList.contains('row');
+        const targetIsSlotContainer = toList.classList.contains('row');
+        const sourceIsSlotContainer = fromList.classList.contains('row');
 
-        // 1. Карта перемещена в слот на доске (из руки или другого слота)
-        if (targetIsSlot) {
+        // 1. Карта перемещена в контейнер ряда на доске
+        if (targetIsSlotContainer) {
             const targetRowElement = toList;
             const targetRowName = targetRowElement.dataset.row;
-            // Находим *слот*, куда была брошена карта. SortableJS помещает элемент *между* существующими.
-            // Нам нужно найти ближайший элемент .card-slot
-            let targetSlot = itemEl.closest('.card-slot');
-
-            // Если карта брошена в пустой ряд или между слотами, ищем ближайший слот
-            if (!targetSlot) {
-                 // Простая эвристика: ищем слот по индексу вставки
-                 if (newIndex < targetRowElement.children.length && targetRowElement.children[newIndex].classList.contains('card-slot')) {
-                      targetSlot = targetRowElement.children[newIndex];
-                 } else if (newIndex > 0 && targetRowElement.children[newIndex - 1].classList.contains('card-slot')) {
-                      targetSlot = targetRowElement.children[newIndex - 1];
-                 }
-                 // Если все еще не нашли, возможно, ряд пуст - берем первый слот
-                 else if (targetRowElement.children.length > 0 && targetRowElement.children[0].classList.contains('card-slot')) {
-                      targetSlot = targetRowElement.children[0];
-                 }
+            // Ищем слот, куда бросили карту.
+            // SortableJS вставляет элемент, поэтому ищем ближайший слот ПОСЛЕ или ПЕРЕД ним.
+            let targetSlot = null;
+            if (newIndex < targetRowElement.children.length && targetRowElement.children[newIndex].classList.contains('card-slot')) {
+                 targetSlot = targetRowElement.children[newIndex];
+            } else if (newIndex > 0 && targetRowElement.children[newIndex - 1].classList.contains('card-slot')) {
+                 targetSlot = targetRowElement.children[newIndex - 1];
+            } else if (targetRowElement.children.length > 0 && targetRowElement.children[0].classList.contains('card-slot')) {
+                 targetSlot = targetRowElement.children[0]; // Если ряд был пуст
             }
+             // Проверка, если карта оказалась внутри слота (маловероятно с sort:false)
+             if (itemEl.parentElement && itemEl.parentElement.classList.contains('card-slot')) {
+                  targetSlot = itemEl.parentElement;
+             }
 
+            // Проверяем, что нашли слот, он доступен и пуст
             if (targetSlot && targetSlot.classList.contains('card-slot') && targetSlot.classList.contains('available') && !targetSlot.hasChildNodes()) {
                 const targetSlotIndex = parseInt(targetSlot.dataset.index);
 
-                // Если карта была перемещена из другого слота, освобождаем старый
-                if (sourceIsSlot && fromList !== toList) {
-                    // Находим старый слот по данным из placedCardsMap
+                // Освобождаем старый слот, если карта перемещена с доски
+                if (sourceIsSlotContainer) { // Не нужно освобождать, если из руки
                     if (placedCardsMap.has(cardStr)) {
                          const oldPlacement = placedCardsMap.get(cardStr);
                          const oldSlot = document.querySelector(`#player-table .card-slot[data-row='${oldPlacement.row}'][data-index='${oldPlacement.index}']`);
                          if (oldSlot) {
-                              oldSlot.innerHTML = ''; // Очищаем
+                              oldSlot.innerHTML = '';
                               oldSlot.classList.add('available');
                          }
                     }
@@ -303,31 +292,31 @@
                 placedCardsMap.set(cardStr, { element: itemEl, row: targetRowName, index: targetSlotIndex, isFinal: false });
                 itemEl.classList.add('placed-this-turn');
                 itemEl.classList.add('placed'); // Скрываем из руки
-                targetSlot.appendChild(itemEl); // Перемещаем DOM-элемент в слот
+                targetSlot.appendChild(itemEl); // Перемещаем DOM-элемент ВНУТРЬ слота
                 targetSlot.classList.remove('available');
             } else {
-                // Если бросили не в доступный пустой слот, отменяем перемещение
-                console.warn("JS: Card dropped onto invalid target, reverting.");
-                fromList.insertBefore(itemEl, fromList.children[oldIndex]); // Возвращаем элемент обратно
-                // Может потребоваться перерисовка доски/руки для восстановления порядка
-                renderHand(JSON.parse(handElement.dataset.currentHand || '[]'));
-                renderBoard('player', currentGameState.playerBoard, true);
+                // Отмена перемещения: возвращаем карту обратно
+                console.warn("JS: Card dropped onto invalid target or occupied/unavailable slot, reverting.");
+                fromList.insertBefore(itemEl, fromList.children[oldIndex]);
+                // Перерисовываем, чтобы восстановить порядок и классы
+                // Важно: Перерисовка может быть сложной, т.к. SortableJS уже изменил DOM.
+                // Проще может быть запросить состояние с сервера или обновить UI полностью.
+                // Пока просто возвращаем и надеемся, что updateUIState исправит.
             }
         }
         // 2. Карта возвращена из слота в руку
-        else if (targetIsHand && sourceIsSlot) {
+        else if (targetIsHand && sourceIsSlotContainer) {
             if (placedCardsMap.has(cardStr)) {
                 const oldPlacement = placedCardsMap.get(cardStr);
                 const sourceSlot = document.querySelector(`#player-table .card-slot[data-row='${oldPlacement.row}'][data-index='${oldPlacement.index}']`);
-                if (sourceSlot) {
-                     sourceSlot.innerHTML = ''; // Очищаем слот
+                 if (sourceSlot) {
+                     sourceSlot.innerHTML = '';
                      sourceSlot.classList.add('available');
-                }
+                 }
                 placedCardsMap.delete(cardStr);
                 itemEl.classList.remove('placed-this-turn');
-                itemEl.classList.remove('placed'); // Показываем в руке
+                itemEl.classList.remove('placed');
             }
-             // SortableJS уже переместил элемент в DOM руки
         }
         // 3. Карта перемещена внутри руки
         else if (targetIsHand && sourceIsHand) {
@@ -356,6 +345,7 @@
                         const cardStr = rowCards[i] || "__";
                         const slot = createCardSlotElement(rowName, i, isPlayerBoard);
                         let existingPlacedCard = null;
+                        // Ищем карту, которая ДОЛЖНА быть в этом слоте согласно placedCardsMap
                         if (isPlayerBoard && placedCardsMap.size > 0) {
                              for (const [cStr, placement] of placedCardsMap.entries()) {
                                  if (placement.row === rowName && placement.index === i) {
@@ -369,23 +359,28 @@
                              slot.appendChild(existingPlacedCard);
                              slot.classList.remove('available');
                         } else {
+                             // Если карта не размещена пользователем, берем из stateData
                              const cardEl = createCardElement(cardStr, false);
                              if (cardEl) {
                                  slot.appendChild(cardEl);
                                  if(isPlayerBoard) slot.classList.remove('available');
                              } else if (isPlayerBoard) {
-                                 slot.classList.add('available');
+                                 // Пустой слот делаем доступным позже в updateUIState
+                                 // slot.classList.add('available'); // Не здесь
                              }
                         }
                         rowElement.appendChild(slot);
                     }
                 }
             });
+            // Обновляем классы доступности слотов ПОСЛЕ отрисовки
+            if (isPlayerBoard) updateUIState();
         } catch (error) { console.error(`JS Error in renderBoard for ${playerPrefix}:`, error); }
     }
 
     function renderHand(handCards) {
         try {
+            const oldScroll = handElement.scrollLeft; // Сохраняем прокрутку
             handElement.innerHTML = '';
             const sortedHand = Array.isArray(handCards) ? [...handCards].sort(CardHelper.compareCards) : [];
             handElement.dataset.currentHand = JSON.stringify(sortedHand);
@@ -394,6 +389,7 @@
                 sortedHand.forEach(cardStr => {
                     const cardEl = createCardElement(cardStr, true);
                     if (cardEl) {
+                        // Скрываем карту, если она уже размещена на доске
                         if (placedCardsMap.has(cardStr)) {
                             cardEl.classList.add('placed');
                         }
@@ -402,7 +398,8 @@
                 });
             }
             initializeSortables();
-            clearUIState();
+            clearUIState(); // Сбрасывает выбор и обновляет UIState
+            handElement.scrollLeft = oldScroll; // Восстанавливаем прокрутку
         } catch (error) { console.error("JS Error in renderHand:", error); }
     }
 
@@ -432,6 +429,7 @@
 
             waitingOverlay.style.display = stateData.isWaiting ? 'flex' : 'none';
 
+            // Сначала рендерим доски
             renderBoard('player', stateData.playerBoard, true);
             renderBoard('ai', stateData.opponentBoard, false);
 
@@ -441,11 +439,13 @@
             const currentHandSorted = Array.isArray(handToRender) ? [...handToRender].sort(CardHelper.compareCards) : [];
             const currentHandStr = JSON.stringify(currentHandSorted);
 
+            // Перерисовываем руку, если нужно
             if (canPlayerAct && (currentHandStr !== previousHandStr || (wasGameOver && !stateData.isGameOver) || stateData.street !== previousStreet)) {
                  renderHand(handToRender || []);
             } else if (!canPlayerAct && handElement.children.length > 0) {
                  renderHand([]);
             } else {
+                 // Если рука не менялась, просто обновляем состояние UI
                  updateUIState();
             }
 
@@ -505,29 +505,44 @@
 
             readyButton.disabled = !isReady || !canPlayerAct;
 
+            // Обновляем состояние слотов (доступность для дропа)
             document.querySelectorAll('#player-table .card-slot').forEach(slot => {
-                const isOccupied = !!slot.firstChild;
-                const canDrop = !isOccupied && canPlayerAct && placedCount < requiredPlacement;
+                const isOccupiedByPlacedCard = Array.from(placedCardsMap.values()).some(p => p.row === slot.dataset.row && p.index === parseInt(slot.dataset.index));
+                // Слот доступен для дропа, если: игрок ходит, не все карты размещены, и слот не занят картой из placedCardsMap
+                const canDrop = canPlayerAct && placedCount < requiredPlacement && !isOccupiedByPlacedCard;
                 slot.classList.toggle('available', canDrop);
+
+                // Управляем возможностью перетаскивания ИЗ слота
+                const cardEl = slot.firstChild;
+                if (cardEl && cardEl.classList.contains('card')) {
+                     const cardStr = cardEl.dataset.card;
+                     const canDragFrom = placedCardsMap.has(cardStr) && !placedCardsMap.get(cardStr).isFinal && canPlayerAct;
+                     cardEl.classList.toggle('placed-this-turn', canDragFrom);
+                     cardEl.style.cursor = canDragFrom ? 'grab' : 'default';
+                }
             });
 
+            // Включаем/выключаем SortableJS
             const enableSortables = canPlayerAct;
             Object.values(sortableInstances).forEach(instance => {
                 if (instance) instance.option("disabled", !enableSortables);
             });
 
+            // Обновляем карты в руке
              Array.from(handElement.children).forEach(cardEl => {
                  const cardStr = cardEl.dataset.card;
                  const isPlaced = placedCardsMap.has(cardStr);
                  const isSelectedForDiscard = selectedCardToDiscardElement === cardEl;
                  cardEl.classList.toggle('selected', isSelectedForDiscard);
+                 cardEl.style.display = isPlaced ? 'none' : 'flex'; // Скрываем размещенные
 
+                 // Кликабельность для сброса
                  if (!isFL && currentGameState.street > 1 && canPlayerAct && !isPlaced && placedCount === 2) {
                      cardEl.onclick = () => handleCardClick(cardEl);
                      cardEl.style.cursor = 'pointer';
                  } else {
                      cardEl.onclick = null;
-                     cardEl.style.cursor = enableSortables ? 'grab' : 'default';
+                     cardEl.style.cursor = enableSortables && !isPlaced && !isSelectedForDiscard ? 'grab' : 'default';
                  }
              });
         } catch(error) { console.error("JS Error in updateUIState:", error); }
@@ -583,8 +598,7 @@
          startButton.disabled = true;
          readyButton.disabled = true;
          waitingOverlay.style.display = 'flex';
-         // Сбрасываем placedCardsMap и другие состояния UI перед началом нового раунда
-         placedCardsMap.clear();
+         placedCardsMap.clear(); // Очищаем карту размещений
          clearUIState();
 
          try {
@@ -683,14 +697,23 @@
             }
             // Сбрасываем placedCardsMap ПОСЛЕ успешной отправки хода
             placedCardsMap.clear();
-            updateUI(data);
+            // Сбрасываем выбор сброса
+            if (selectedCardToDiscardElement) {
+                 selectedCardToDiscardElement.classList.remove('selected');
+                 selectedCardToDiscardElement = null;
+            }
+            flDiscardSelection.clear();
+            updateUI(data); // Обновляем UI новым состоянием
 
         } catch (error) {
             console.error('JS Error sending move:', error);
             messageArea.textContent = `Ошибка хода: ${error.message}`;
             messageArea.style.color = 'red';
             if (currentGameState && !currentGameState.isGameOver && !currentGameState.playerFinishedRound) {
-                 readyButton.disabled = false; // Позволяем исправить, если не конец раунда
+                 // Не разблокируем кнопку Готов автоматически при ошибке,
+                 // т.к. состояние могло измениться на сервере.
+                 // Пользователь должен будет обновить страницу или начать новый раунд.
+                 // readyButton.disabled = false;
             }
             waitingOverlay.style.display = 'none';
         }
@@ -713,6 +736,12 @@
              }
              // Сбрасываем placedCardsMap при получении нового состояния с сервера
              placedCardsMap.clear();
+             // Сбрасываем выбор сброса
+             if (selectedCardToDiscardElement) {
+                  selectedCardToDiscardElement.classList.remove('selected');
+                  selectedCardToDiscardElement = null;
+             }
+             flDiscardSelection.clear();
              updateUI(data);
          } catch (error) {
              console.error("JS Error fetching game state:", error);
