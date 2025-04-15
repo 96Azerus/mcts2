@@ -1,0 +1,40 @@
+// .devcontainer/devcontainer.json
+{
+    "name": "OFC Pineapple Poker",
+    // Указываем Dockerfile для сборки окружения
+    "build": {
+        "dockerfile": "../Dockerfile" // Путь к твоему Dockerfile относительно папки .devcontainer
+    },
+
+    // Настройки для запуска контейнера
+    "runArgs": [
+        "--env-file", ".env" // Загружаем переменные окружения из файла .env (см. Шаг 3)
+    ],
+
+    // Пользователь, от имени которого будут выполняться команды в контейнере
+    // Должен совпадать с USER в Dockerfile
+    "remoteUser": "appuser",
+
+    // Команды, которые нужно выполнить ПОСЛЕ создания контейнера
+    // Устанавливаем зависимости здесь, чтобы не делать это каждый раз при подключении
+    "postCreateCommand": "pip install --no-cache-dir -r requirements.txt",
+
+    // Порты, которые нужно автоматически пробросить из контейнера наружу
+    "forwardPorts": [8080], // Пробрасываем порт 8080 (или тот, что указан в .env)
+
+    // Настройки для VS Code внутри Codespace (опционально)
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/local/bin/python", // Указываем путь к Python
+                "python.linting.enabled": true,
+                "python.linting.pylintEnabled": true // Можешь использовать flake8 или black, если предпочитаешь
+            },
+            "extensions": [
+                "ms-python.python",     // Расширение Python
+                "ms-python.vscode-pylance", // Улучшенный Language Server
+                "ms-azuretools.vscode-docker" // Расширение Docker (полезно)
+            ]
+        }
+    }
+}
