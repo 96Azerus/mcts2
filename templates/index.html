@@ -115,7 +115,6 @@
     <div class="game-area">
          <div class="player-label">AI Player</div>
         <div class="table" id="ai-table">
-            <!-- Добавляем data-row атрибуты для идентификации в SortableJS -->
             <div class="row top" id="ai-top-row" data-row="top"></div>
             <div class="row middle" id="ai-middle-row" data-row="middle"></div>
             <div class="row bottom" id="ai-bottom-row" data-row="bottom"></div>
@@ -123,7 +122,6 @@
 
         <div class="player-label">Human Player (Вы)</div>
         <div class="table" id="player-table">
-            <!-- Добавляем data-row атрибуты для идентификации в SortableJS -->
             <div class="row top" id="player-top-row" data-row="top"></div>
             <div class="row middle" id="player-middle-row" data-row="middle"></div>
             <div class="row bottom" id="player-bottom-row" data-row="bottom"></div>
@@ -131,7 +129,6 @@
     </div>
 
     <div id="hand-area">
-        <!-- Добавляем data-row атрибут для идентификации в SortableJS -->
         <div id="hand" data-row="hand"></div>
         <div id="fl-discard-area" style="display: none;">
              <span>Выберите карту(ы) для сброса:</span>
@@ -146,8 +143,7 @@
     // --- Глобальные переменные ---
     let currentGameState = null;
     let humanPlayerIndex = 0;
-    // let draggedCardElement = null; // Больше не нужно для SortableJS
-    let placedCardsMap = new Map(); // cardStr -> { element, row, index, isFinal } - ОСТАВЛЯЕМ для отслеживания состояния
+    let placedCardsMap = new Map(); // cardStr -> { element, row, index, isFinal }
     let selectedCardToDiscardElement = null; // Для улиц 2-5
     let flDiscardSelection = new Set(); // cardStr - для ФЛ
     let sortableInstances = {}; // Хранилище для экземпляров SortableJS
@@ -167,17 +163,9 @@
         bottom: document.getElementById('player-bottom-row')
     };
 
-    // --- ИЗМЕНЕНИЕ: Удалены старые обработчики DnD ---
-    // function handleDragStart(event) { ... }
-    // function handleDragOver(event) { ... }
-    // function handleDragLeave(event) { ... }
-    // function handleDrop(event) { ... }
-    // function handleDragEnd(event) { ... }
-
-    // --- Вспомогательные функции (без изменений) ---
+    // --- Вспомогательные функции ---
     function getCardSuitSymbol(suitChar) { const map = {'c': '♣', 'd': '♦', 'h': '♥', 's': '♠'}; return map[suitChar.toLowerCase()] || suitChar; }
     function createCardElement(cardStr, isDraggable = false) {
-        // console.log(`JS: createCardElement for ${cardStr}`);
         if (!cardStr || cardStr === "__" || cardStr === "InvalidCard") { return null; }
         try {
             const cardElement = document.createElement('div');
@@ -198,10 +186,7 @@
             if (suitSymbol === '♥' || suitSymbol === '♦') { cardElement.style.color = '#e44145'; }
             else { cardElement.style.color = '#2d2d2d'; }
 
-            // isDraggable больше не используется напрямую для атрибута draggable
-            // SortableJS сам определяет перетаскиваемые элементы по селектору
-            cardElement.style.cursor = 'grab'; // Устанавливаем курсор
-
+            cardElement.style.cursor = 'grab';
             return cardElement;
         } catch (error) {
              console.error(`JS Error in createCardElement for ${cardStr}:`, error); return null;
@@ -212,151 +197,149 @@
         slot.className = 'card-slot';
         slot.dataset.row = row;
         slot.dataset.index = index;
-        // Класс available добавляется/удаляется в updateUIState
         return slot;
     }
 
-    // --- ИЗМЕНЕНИЕ: Инициализация SortableJS ---
+    // --- Инициализация SortableJS ---
     function initializeSortables() {
         const sortableOptions = {
-            group: 'cards', // Позволяет перетаскивать между этими контейнерами
-            animation: 150, // Анимация перемещения
-            draggable: '.card', // Указываем, что перетаскивать можно только карты
-            ghostClass: 'sortable-ghost', // Класс для "тени" перетаскиваемой карты
-            chosenClass: 'sortable-chosen', // Класс для выбранной карты
-            filter: '.selected', // Нельзя перетаскивать карты, выбранные для сброса
-            preventOnFilter: false, // Разрешить стандартные действия для отфильтрованных элементов (если нужно)
-            onEnd: handleSortableEnd, // Обработчик завершения перетаскивания
-            // Добавляем класс для подсветки цели при перетаскивании
+            group: 'cards',
+            animation: 150,
+            draggable: '.card',
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            filter: '.selected',
+            preventOnFilter: false,
+            onEnd: handleSortableEnd,
             onMove: function (evt) {
-                 // Подсвечиваем слот, над которым происходит перетаскивание
                  document.querySelectorAll('.sortable-drag-over-target').forEach(el => el.classList.remove('sortable-drag-over-target'));
-                 if (evt.to.classList.contains('card-slot') && evt.to.classList.contains('available')) {
+                 // Подсвечиваем только ПУСТЫЕ доступные слоты
+                 if (evt.to.classList.contains('card-slot') && evt.to.classList.contains('available') && !evt.to.hasChildNodes()) {
                       evt.to.classList.add('sortable-drag-over-target');
                  } else if (evt.to.id === 'hand' && evt.item.classList.contains('placed-this-turn')) {
                       // Можно добавить подсветку руки при возврате
                  }
             },
-            // Убираем подсветку после завершения
             onUnchoose: function(evt) {
                  document.querySelectorAll('.sortable-drag-over-target').forEach(el => el.classList.remove('sortable-drag-over-target'));
             }
         };
 
-        // Уничтожаем старые экземпляры, если они есть
         Object.values(sortableInstances).forEach(instance => instance.destroy());
         sortableInstances = {};
 
-        // Инициализируем для руки
         if (handElement) {
             sortableInstances.hand = new Sortable(handElement, sortableOptions);
         }
-        // Инициализируем для рядов игрока
         Object.entries(playerRows).forEach(([rowName, rowElement]) => {
             if (rowElement) {
                 sortableInstances[rowName] = new Sortable(rowElement, {
                     ...sortableOptions,
-                    // Дополнительно: можно запретить сортировку внутри ряда, если нужно
-                    // sort: false,
+                    // Важно: Запрещаем сортировку ВНУТРИ рядов доски
+                    sort: false,
                 });
             }
         });
-        // console.log("JS: Sortables initialized", sortableInstances);
     }
 
-    // --- ИЗМЕНЕНИЕ: Обработчик события SortableJS ---
+    // --- Обработчик события SortableJS ---
     function handleSortableEnd(event) {
-        // console.log("JS: handleSortableEnd", event);
-        const itemEl = event.item; // Перемещенный элемент (карта)
-        const toList = event.to;   // Контейнер, куда переместили
-        const fromList = event.from; // Контейнер, откуда переместили
+        const itemEl = event.item;
+        const toList = event.to;
+        const fromList = event.from;
         const cardStr = itemEl.dataset.card;
-        const oldIndex = event.oldIndex; // Индекс в старом контейнере
-        const newIndex = event.newIndex; // Индекс в новом контейнере
+        const oldIndex = event.oldDraggableIndex; // Используем oldDraggableIndex для корректного индекса в исходном списке
+        const newIndex = event.newDraggableIndex; // Используем newDraggableIndex для корректного индекса в целевом списке
 
-        // Убираем подсветку цели
         document.querySelectorAll('.sortable-drag-over-target').forEach(el => el.classList.remove('sortable-drag-over-target'));
 
         if (!cardStr) return;
 
         const targetIsHand = toList.id === 'hand';
         const sourceIsHand = fromList.id === 'hand';
-        const targetIsBoard = toList.classList.contains('row');
-        const sourceIsBoard = fromList.classList.contains('row');
+        // Определяем цель как слот, если toList - это ряд (top, middle, bottom)
+        const targetIsSlot = toList.classList.contains('row');
+        const sourceIsSlot = fromList.classList.contains('row');
 
-        // --- Логика обновления placedCardsMap ---
-
-        // 1. Карта перемещена из руки на доску ИЛИ с доски на доску
-        if (targetIsBoard) {
+        // 1. Карта перемещена в слот на доске (из руки или другого слота)
+        if (targetIsSlot) {
             const targetRowElement = toList;
             const targetRowName = targetRowElement.dataset.row;
-            // Находим слот, в который попала карта
-            const targetSlot = targetRowElement.children[newIndex];
+            // Находим *слот*, куда была брошена карта. SortableJS помещает элемент *между* существующими.
+            // Нам нужно найти ближайший элемент .card-slot
+            let targetSlot = itemEl.closest('.card-slot');
 
-            if (targetSlot && targetSlot.classList.contains('card-slot')) {
-                 // Проверяем, пуст ли слот (SortableJS может поместить карту рядом, а не внутрь)
-                 if (targetSlot.children.length > 1) { // Если в слоте уже есть карта + перетаскиваемая
-                      console.warn("JS: Card dropped onto an occupied slot, reverting.");
-                      // Отменяем перемещение (возвращаем карту обратно)
-                      if (sourceIsHand) {
-                           handElement.insertBefore(itemEl, handElement.children[oldIndex]);
-                      } else {
-                           fromList.insertBefore(itemEl, fromList.children[oldIndex]);
-                      }
-                      // Обновляем UI, чтобы убрать лишнюю карту из слота
-                      renderBoard('player', currentGameState.playerBoard, true); // Перерисовываем доску
-                      return;
+            // Если карта брошена в пустой ряд или между слотами, ищем ближайший слот
+            if (!targetSlot) {
+                 // Простая эвристика: ищем слот по индексу вставки
+                 if (newIndex < targetRowElement.children.length && targetRowElement.children[newIndex].classList.contains('card-slot')) {
+                      targetSlot = targetRowElement.children[newIndex];
+                 } else if (newIndex > 0 && targetRowElement.children[newIndex - 1].classList.contains('card-slot')) {
+                      targetSlot = targetRowElement.children[newIndex - 1];
                  }
+                 // Если все еще не нашли, возможно, ряд пуст - берем первый слот
+                 else if (targetRowElement.children.length > 0 && targetRowElement.children[0].classList.contains('card-slot')) {
+                      targetSlot = targetRowElement.children[0];
+                 }
+            }
 
+            if (targetSlot && targetSlot.classList.contains('card-slot') && targetSlot.classList.contains('available') && !targetSlot.hasChildNodes()) {
                 const targetSlotIndex = parseInt(targetSlot.dataset.index);
+
+                // Если карта была перемещена из другого слота, освобождаем старый
+                if (sourceIsSlot && fromList !== toList) {
+                    // Находим старый слот по данным из placedCardsMap
+                    if (placedCardsMap.has(cardStr)) {
+                         const oldPlacement = placedCardsMap.get(cardStr);
+                         const oldSlot = document.querySelector(`#player-table .card-slot[data-row='${oldPlacement.row}'][data-index='${oldPlacement.index}']`);
+                         if (oldSlot) {
+                              oldSlot.innerHTML = ''; // Очищаем
+                              oldSlot.classList.add('available');
+                         }
+                    }
+                }
+
                 // Обновляем карту размещений
                 placedCardsMap.set(cardStr, { element: itemEl, row: targetRowName, index: targetSlotIndex, isFinal: false });
-                itemEl.classList.add('placed-this-turn'); // Помечаем как размещенную в этом ходу
-                itemEl.classList.add('placed'); // Скрываем из вида в руке (если она была оттуда)
-                targetSlot.classList.remove('available'); // Слот занят
-                // console.log(`JS: Card ${cardStr} placed in ${targetRowName}[${targetSlotIndex}]`);
-
-                // Если карта была перемещена с доски, освобождаем старый слот
-                if (sourceIsBoard && fromList !== toList) {
-                     const sourceSlot = fromList.children[oldIndex];
-                     if (sourceSlot && sourceSlot.classList.contains('card-slot')) {
-                          sourceSlot.classList.add('available');
-                     }
-                }
+                itemEl.classList.add('placed-this-turn');
+                itemEl.classList.add('placed'); // Скрываем из руки
+                targetSlot.appendChild(itemEl); // Перемещаем DOM-элемент в слот
+                targetSlot.classList.remove('available');
             } else {
-                 console.error("JS: Target slot not found or invalid after drop.");
-                 // Попытка вернуть карту обратно (может быть сложно)
-                 if (sourceIsHand) handElement.appendChild(itemEl);
-                 else fromList.insertBefore(itemEl, fromList.children[oldIndex]);
+                // Если бросили не в доступный пустой слот, отменяем перемещение
+                console.warn("JS: Card dropped onto invalid target, reverting.");
+                fromList.insertBefore(itemEl, fromList.children[oldIndex]); // Возвращаем элемент обратно
+                // Может потребоваться перерисовка доски/руки для восстановления порядка
+                renderHand(JSON.parse(handElement.dataset.currentHand || '[]'));
+                renderBoard('player', currentGameState.playerBoard, true);
             }
         }
-        // 2. Карта возвращена из доски в руку
-        else if (targetIsHand && sourceIsBoard) {
+        // 2. Карта возвращена из слота в руку
+        else if (targetIsHand && sourceIsSlot) {
             if (placedCardsMap.has(cardStr)) {
                 const oldPlacement = placedCardsMap.get(cardStr);
-                const sourceSlot = fromList.children[oldIndex]; // Слот, откуда взяли
-                 if (sourceSlot && sourceSlot.classList.contains('card-slot')) {
-                     sourceSlot.classList.add('available'); // Освобождаем слот
-                 }
-                placedCardsMap.delete(cardStr); // Удаляем из размещенных
+                const sourceSlot = document.querySelector(`#player-table .card-slot[data-row='${oldPlacement.row}'][data-index='${oldPlacement.index}']`);
+                if (sourceSlot) {
+                     sourceSlot.innerHTML = ''; // Очищаем слот
+                     sourceSlot.classList.add('available');
+                }
+                placedCardsMap.delete(cardStr);
                 itemEl.classList.remove('placed-this-turn');
                 itemEl.classList.remove('placed'); // Показываем в руке
-                // console.log(`JS: Card ${cardStr} returned to hand from ${oldPlacement.row}[${oldPlacement.index}]`);
             }
+             // SortableJS уже переместил элемент в DOM руки
         }
-        // 3. Карта перемещена внутри руки (ничего не делаем с placedCardsMap)
+        // 3. Карта перемещена внутри руки
         else if (targetIsHand && sourceIsHand) {
-             // console.log(`JS: Card ${cardStr} moved within hand`);
+            // Ничего не делаем с placedCardsMap
         }
 
-        // Обновляем состояние UI после любого перемещения
         updateUIState();
     }
 
 
-    // --- Функции обновления UI (renderBoard без изменений) ---
+    // --- Функции обновления UI ---
     function renderBoard(playerPrefix, boardData, isPlayerBoard = false) {
-        // console.log(`JS: renderBoard START for ${playerPrefix}`);
         try {
             const rows = {
                 top: document.getElementById(`${playerPrefix}-top-row`),
@@ -366,14 +349,12 @@
             if (!rows.top || !rows.middle || !rows.bottom) { console.error("JS Error: Board row elements not found for prefix:", playerPrefix); return; }
             Object.entries(rows).forEach(([rowName, rowElement]) => {
                 if(rowElement) {
-                    rowElement.innerHTML = ''; // Очищаем ряд
+                    rowElement.innerHTML = '';
                     const rowCards = boardData[rowName] || [];
                     const capacity = rowName === 'top' ? 3 : 5;
                     for (let i = 0; i < capacity; i++) {
                         const cardStr = rowCards[i] || "__";
-                        // Создаем слот всегда
                         const slot = createCardSlotElement(rowName, i, isPlayerBoard);
-                        // Пытаемся найти карту, которая УЖЕ МОГЛА БЫТЬ размещена в этом слоте пользователем
                         let existingPlacedCard = null;
                         if (isPlayerBoard && placedCardsMap.size > 0) {
                              for (const [cStr, placement] of placedCardsMap.entries()) {
@@ -385,11 +366,9 @@
                         }
 
                         if (existingPlacedCard) {
-                             // Если карта уже размещена пользователем, используем ее
                              slot.appendChild(existingPlacedCard);
                              slot.classList.remove('available');
                         } else {
-                             // Иначе создаем карту из данных состояния игры
                              const cardEl = createCardElement(cardStr, false);
                              if (cardEl) {
                                  slot.appendChild(cardEl);
@@ -402,12 +381,10 @@
                     }
                 }
             });
-            // console.log(`JS: renderBoard for ${playerPrefix} FINISHED`);
         } catch (error) { console.error(`JS Error in renderBoard for ${playerPrefix}:`, error); }
     }
 
     function renderHand(handCards) {
-        // console.log("JS: renderHand START with cards:", handCards);
         try {
             handElement.innerHTML = '';
             const sortedHand = Array.isArray(handCards) ? [...handCards].sort(CardHelper.compareCards) : [];
@@ -415,10 +392,8 @@
 
             if (sortedHand.length > 0) {
                 sortedHand.forEach(cardStr => {
-                    // Создаем карты, но isDraggable теперь не так важно, SortableJS рулит
                     const cardEl = createCardElement(cardStr, true);
                     if (cardEl) {
-                        // Скрываем карту, если она уже размещена на доске
                         if (placedCardsMap.has(cardStr)) {
                             cardEl.classList.add('placed');
                         }
@@ -426,18 +401,12 @@
                     }
                 });
             }
-            // Инициализируем или переинициализируем SortableJS ПОСЛЕ рендеринга руки
             initializeSortables();
-            // Сбрасываем состояние UI, связанное с предыдущим ходом
-            clearUIState(); // Вызываем здесь, чтобы применить состояние к новым элементам
-            // console.log("JS: renderHand FINISHED");
+            clearUIState();
         } catch (error) { console.error("JS Error in renderHand:", error); }
     }
 
     function clearUIState() {
-         // console.log("JS: clearUIState START");
-         // Сбрасываем только состояние выбора/перетаскивания, НЕ placedCardsMap
-         // draggedCardElement = null; // Не используется
          if(selectedCardToDiscardElement) {
              selectedCardToDiscardElement.classList.remove('selected');
              selectedCardToDiscardElement = null;
@@ -445,17 +414,13 @@
          flDiscardSelection.clear();
          flDiscardArea.style.display = 'none';
          flDiscardOptions.innerHTML = '';
-         // Убираем классы с карт и слотов
          document.querySelectorAll('.card.selected').forEach(c => c.classList.remove('selected'));
          document.querySelectorAll('.card-slot.drag-over').forEach(s => s.classList.remove('drag-over'));
          document.querySelectorAll('.card-slot.sortable-drag-over-target').forEach(s => s.classList.remove('sortable-drag-over-target'));
-         // Обновляем состояние кнопок и доступности слотов/перетаскивания
          updateUIState();
-         // console.log("JS: clearUIState FINISHED");
     }
 
     function updateUI(stateData) {
-        // console.log("JS: updateUI START with state:", JSON.stringify(stateData));
         if (!stateData || typeof stateData !== 'object') { console.error("JS Error: Invalid stateData received in updateUI", stateData); messageArea.textContent = "Ошибка: Некорректные данные от сервера."; return; }
         try {
             const wasGameOver = currentGameState?.isGameOver ?? true;
@@ -467,7 +432,6 @@
 
             waitingOverlay.style.display = stateData.isWaiting ? 'flex' : 'none';
 
-            // Рендерим доски (renderBoard теперь учитывает placedCardsMap)
             renderBoard('player', stateData.playerBoard, true);
             renderBoard('ai', stateData.opponentBoard, false);
 
@@ -477,13 +441,11 @@
             const currentHandSorted = Array.isArray(handToRender) ? [...handToRender].sort(CardHelper.compareCards) : [];
             const currentHandStr = JSON.stringify(currentHandSorted);
 
-            // Перерисовываем руку, если нужно
             if (canPlayerAct && (currentHandStr !== previousHandStr || (wasGameOver && !stateData.isGameOver) || stateData.street !== previousStreet)) {
                  renderHand(handToRender || []);
             } else if (!canPlayerAct && handElement.children.length > 0) {
                  renderHand([]);
             } else {
-                 // Если рука не менялась, просто обновляем состояние UI (включая Sortable)
                  updateUIState();
             }
 
@@ -498,12 +460,10 @@
 
             startButton.disabled = !stateData.isGameOver;
 
-            // console.log("JS: updateUI FINISHED");
         } catch (error) { console.error("JS Error in updateUI:", error); messageArea.textContent = "Ошибка отображения интерфейса."; }
     }
 
     function updateUIState() {
-        // console.log("JS: updateUIState START");
         if (!currentGameState) { return; }
         try {
             const canPlayerAct = !currentGameState.isGameOver && !currentGameState.playerFinishedRound && !currentGameState.isWaiting;
@@ -545,20 +505,17 @@
 
             readyButton.disabled = !isReady || !canPlayerAct;
 
-            // Обновляем состояние слотов (доступность для дропа)
             document.querySelectorAll('#player-table .card-slot').forEach(slot => {
                 const isOccupied = !!slot.firstChild;
                 const canDrop = !isOccupied && canPlayerAct && placedCount < requiredPlacement;
                 slot.classList.toggle('available', canDrop);
             });
 
-            // Включаем/выключаем SortableJS
             const enableSortables = canPlayerAct;
             Object.values(sortableInstances).forEach(instance => {
                 if (instance) instance.option("disabled", !enableSortables);
             });
 
-            // Обновляем кликабельность карт в руке для сброса
              Array.from(handElement.children).forEach(cardEl => {
                  const cardStr = cardEl.dataset.card;
                  const isPlaced = placedCardsMap.has(cardStr);
@@ -573,30 +530,248 @@
                      cardEl.style.cursor = enableSortables ? 'grab' : 'default';
                  }
              });
-             // console.log("JS: updateUIState FINISHED");
         } catch(error) { console.error("JS Error in updateUIState:", error); }
     }
 
-    // --- Обработчики действий пользователя (handleCardClick, toggleFLDiscardSelection без изменений) ---
-    function handleCardClick(cardElement) { /* ... как раньше ... */ }
-    function toggleFLDiscardSelection(cardElement) { /* ... как раньше ... */ }
+    // --- Обработчики действий пользователя ---
+    function handleCardClick(cardElement) {
+        if (!currentGameState || currentGameState.isGameOver || currentGameState.playerFinishedRound || currentGameState.isWaiting) return;
+        if (currentGameState.isFantasylandRound && currentGameState.playerFantasylandStatus) return;
+        if (currentGameState.street <= 1) return;
+        if (placedCardsMap.size !== 2) return;
 
-    // --- Функции взаимодействия с бэкендом (startGame, confirmTurn, fetchAndUpdateState без изменений) ---
-    async function startGame() { /* ... как раньше ... */ }
-    async function confirmTurn() { /* ... как раньше, но данные собираются из placedCardsMap */ }
-    async function fetchAndUpdateState() { /* ... как раньше ... */ }
-    function toggleFullScreen() { /* ... как раньше ... */ }
+        if (selectedCardToDiscardElement && selectedCardToDiscardElement !== cardElement) {
+            selectedCardToDiscardElement.classList.remove('selected');
+        }
 
-    // --- Вспомогательный объект для работы с картами (без изменений) ---
-    const CardHelper = { /* ... как раньше ... */ };
+        if (selectedCardToDiscardElement === cardElement) {
+            selectedCardToDiscardElement.classList.remove('selected');
+            selectedCardToDiscardElement = null;
+        } else {
+            cardElement.classList.add('selected');
+            selectedCardToDiscardElement = cardElement;
+        }
+        updateUIState();
+    }
+
+    function toggleFLDiscardSelection(cardElement) {
+        if (!currentGameState || !currentGameState.isFantasylandRound || !currentGameState.playerFantasylandStatus) return;
+
+        const cardStr = cardElement.dataset.card;
+        const originalHandSize = currentGameState.fantasylandHand?.length || 0;
+        const requiredDiscard = Math.max(0, originalHandSize - 13);
+
+        if (flDiscardSelection.has(cardStr)) {
+            flDiscardSelection.delete(cardStr);
+            cardElement.classList.remove('discard-selected');
+        } else {
+            if (flDiscardSelection.size < requiredDiscard) {
+                flDiscardSelection.add(cardStr);
+                cardElement.classList.add('discard-selected');
+            } else {
+                 console.log("JS: Maximum discard selection reached");
+            }
+        }
+        updateUIState();
+    }
+
+    // --- Функции взаимодействия с бэкендом ---
+    async function startGame() {
+         if (startButton.disabled) { return; }
+         messageArea.textContent = "Начинаем новый раунд...";
+         messageArea.style.color = '#333';
+         startButton.disabled = true;
+         readyButton.disabled = true;
+         waitingOverlay.style.display = 'flex';
+         // Сбрасываем placedCardsMap и другие состояния UI перед началом нового раунда
+         placedCardsMap.clear();
+         clearUIState();
+
+         try {
+              const response = await fetch('/start', { method: 'POST' });
+              if (!response.ok) {
+                  const errorText = await response.text();
+                  throw new Error(`Start game failed: ${response.status} ${errorText}`);
+              }
+              const data = await response.json();
+              updateUI(data);
+         } catch (error) {
+              console.error('JS Error starting game:', error);
+              messageArea.textContent = `Ошибка начала раунда: ${error.message}`;
+              messageArea.style.color = 'red';
+              startButton.disabled = false;
+              waitingOverlay.style.display = 'none';
+         }
+    }
+
+    async function confirmTurn() {
+        if (readyButton.disabled || !currentGameState) { return; }
+
+        let movePayload = {};
+        const isFL = currentGameState.isFantasylandRound && currentGameState.playerFantasylandStatus;
+
+        try {
+            if (isFL) {
+                const placement = { top: Array(3).fill("__"), middle: Array(5).fill("__"), bottom: Array(5).fill("__") };
+                let actualPlacedCount = 0;
+                placedCardsMap.forEach((value, key) => {
+                    if (placement[value.row] && value.index < placement[value.row].length) {
+                        placement[value.row][value.index] = key;
+                        actualPlacedCount++;
+                    } else {
+                         throw new Error(`Некорректные данные размещения для карты ${key}: ${value.row}[${value.index}]`);
+                    }
+                });
+                if (actualPlacedCount !== 13) {
+                     throw new Error(`Необходимо разместить 13 карт, размещено ${actualPlacedCount}.`);
+                }
+
+                const discarded = Array.from(flDiscardSelection);
+                const originalHandSize = currentGameState.fantasylandHand?.length || 0;
+                const requiredDiscard = Math.max(0, originalHandSize - 13);
+                if (discarded.length !== requiredDiscard) {
+                     throw new Error(`Неверное количество карт для сброса (нужно ${requiredDiscard}, выбрано ${discarded.length}).`);
+                }
+                movePayload = { placement: placement, discarded: discarded };
+
+            } else {
+                if (currentGameState.street === 1) {
+                    if (placedCardsMap.size !== 5) throw new Error("Нужно разместить 5 карт на улице 1.");
+                    const placements = [];
+                    placedCardsMap.forEach((value, key) => {
+                        placements.push({ card: key, row: value.row, index: value.index });
+                    });
+                    placements.sort((a, b) => a.row.localeCompare(b.row) || a.index - b.index);
+                    movePayload = { placements: placements };
+                } else {
+                    if (placedCardsMap.size !== 2) throw new Error("Нужно разместить 2 карты.");
+                    if (!selectedCardToDiscardElement) throw new Error("Нужно выбрать карту для сброса.");
+                    const placements = [];
+                    placedCardsMap.forEach((value, key) => {
+                        placements.push({ card: key, row: value.row, index: value.index });
+                    });
+                    placements.sort((a, b) => a.row.localeCompare(b.row) || a.index - b.index);
+                    movePayload = {
+                        placements: placements,
+                        discard: selectedCardToDiscardElement.dataset.card
+                    };
+                }
+            }
+        } catch (error) {
+             console.error("JS Error preparing move data:", error);
+             messageArea.textContent = `Ошибка подготовки хода: ${error.message}`;
+             messageArea.style.color = 'red';
+             return;
+        }
+
+        readyButton.disabled = true;
+        startButton.disabled = true;
+        waitingOverlay.style.display = 'flex';
+        messageArea.textContent = "Отправка хода...";
+        messageArea.style.color = '#333';
+
+        try {
+            const response = await fetch('/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(movePayload)
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || data.error_message || `Move failed: ${response.status}`);
+            }
+            // Сбрасываем placedCardsMap ПОСЛЕ успешной отправки хода
+            placedCardsMap.clear();
+            updateUI(data);
+
+        } catch (error) {
+            console.error('JS Error sending move:', error);
+            messageArea.textContent = `Ошибка хода: ${error.message}`;
+            messageArea.style.color = 'red';
+            if (currentGameState && !currentGameState.isGameOver && !currentGameState.playerFinishedRound) {
+                 readyButton.disabled = false; // Позволяем исправить, если не конец раунда
+            }
+            waitingOverlay.style.display = 'none';
+        }
+    }
+
+     async function fetchAndUpdateState() {
+         messageArea.textContent = "Загрузка...";
+         messageArea.style.color = '#333';
+         try {
+             const response = await fetch('/api/game_state');
+             if (!response.ok) {
+                 const errorText = await response.text();
+                 throw new Error(`Fetch state failed: ${response.status} ${errorText}`);
+             }
+             const data = await response.json();
+             if (data.error_message) {
+                 console.error("JS Error from API:", data.error_message);
+                 messageArea.textContent += ` | Ошибка сервера: ${data.error_message}`;
+                 messageArea.style.color = 'red';
+             }
+             // Сбрасываем placedCardsMap при получении нового состояния с сервера
+             placedCardsMap.clear();
+             updateUI(data);
+         } catch (error) {
+             console.error("JS Error fetching game state:", error);
+             messageArea.textContent = "Ошибка сети при загрузке состояния игры.";
+             messageArea.style.color = 'red';
+             startButton.disabled = false;
+             readyButton.disabled = true;
+             waitingOverlay.style.display = 'none';
+         }
+     }
+
+     function toggleFullScreen() {
+         try {
+             const fsIcon = document.querySelector('.fullscreen-btn .material-icons');
+             if (!document.fullscreenElement) {
+                 if (document.documentElement.requestFullscreen) {
+                     document.documentElement.requestFullscreen()
+                         .then(() => { if(fsIcon) fsIcon.textContent = 'fullscreen_exit'; })
+                         .catch(err => console.error(`JS Error attempting to enable full-screen mode: ${err.message} (${err.name})`));
+                 } else { console.warn("JS: Fullscreen API not supported"); }
+             } else {
+                 if (document.exitFullscreen) {
+                     document.exitFullscreen()
+                         .then(() => { if(fsIcon) fsIcon.textContent = 'fullscreen'; })
+                         .catch(err => console.error(`JS Error attempting to exit full-screen mode: ${err.message} (${err.name})`));
+                 }
+             }
+         } catch (error) { console.error("JS Error toggling fullscreen:", error); }
+     }
+
+    // --- Вспомогательный объект для работы с картами ---
+    const CardHelper = {
+         ranks: '23456789TJQKA',
+         suits: 'cdhs',
+         rankValues: {'2':0,'3':1,'4':2,'5':3,'6':4,'7':5,'8':6,'9':7,'T':8,'J':9,'Q':10,'K':11,'A':12},
+         isValidRank: function(r) { return this.ranks.includes(r.toUpperCase()); },
+         isValidSuit: function(s) { return this.suits.includes(s.toLowerCase()); },
+         getRankValue: function(cardStr) {
+             if (!cardStr || cardStr === "__") return -1;
+             const rank = cardStr.length > 2 && cardStr.startsWith('T') ? 'T' : cardStr.substring(0, 1).toUpperCase();
+             return this.rankValues[rank] ?? -1;
+         },
+         compareCards: function(cardA, cardB) {
+             const rankValueA = CardHelper.getRankValue(cardA);
+             const rankValueB = CardHelper.getRankValue(cardB);
+             if (rankValueB !== rankValueA) {
+                 return rankValueB - rankValueA;
+             } else {
+                 const suitA = cardA.substring(cardA.length - 1);
+                 const suitB = cardB.substring(cardB.length - 1);
+                 return suitA.localeCompare(suitB);
+             }
+         }
+    };
 
     // --- Инициализация ---
     document.addEventListener('DOMContentLoaded', () => {
-        // console.log("JS: DOMContentLoaded event START");
-        fetchAndUpdateState(); // Загружаем начальное состояние
-        // Инициализация SortableJS будет происходить внутри renderHand/updateUI
-        // Старые обработчики DnD удалены
-        // console.log("JS: DOMContentLoaded event FINISHED");
+        fetchAndUpdateState();
+        // Инициализация SortableJS происходит в renderHand/updateUI
     });
 
 </script>
