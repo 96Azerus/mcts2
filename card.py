@@ -1,5 +1,7 @@
 # card.py (Корневой)
-# Добавляем RANK_MAP и функции, необходимые эвалуаторам
+# ИСПРАВЛЕНО: Добавлен импорт из typing
+
+from typing import List, Optional # <--- ДОБАВЛЕН ЭТОТ ИМПОРТ
 
 class Card: # Оставляем класс для удобства использования статических методов
     """
@@ -34,7 +36,6 @@ class Card: # Оставляем класс для удобства исполь
     PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41]
 
     # converstion from string => int
-    # --- ИЗМЕНЕНИЕ: Переименовано для ясности ---
     RANK_CHAR_TO_INT = dict(zip(list(STR_RANKS), INT_RANKS))
     SUIT_CHAR_TO_INT = {
         's' : 1, # spades
@@ -42,10 +43,7 @@ class Card: # Оставляем класс для удобства исполь
         'd' : 4, # diamonds
         'c' : 8, # clubs
     }
-    # --- ИЗМЕНЕНИЕ: Добавлен RANK_MAP для совместимости ---
-    RANK_MAP = RANK_CHAR_TO_INT
-
-    # --- ИЗМЕНЕНИЕ: Переименовано для ясности ---
+    RANK_MAP = RANK_CHAR_TO_INT # Алиас для совместимости
     INT_SUIT_TO_CHAR = 'xshxdxxxc' # index 1='s', 2='h', 4='d', 8='c'
 
     # for pretty printing
@@ -87,16 +85,12 @@ class Card: # Оставляем класс для удобства исполь
     def int_to_str(card_int: int) -> str:
         """Converts integer card representation to string."""
         if not isinstance(card_int, int) or card_int < 0:
-             # print(f"Warning: int_to_str received invalid input {card_int}. Returning '__'.")
-             return "__" # Возвращаем плейсхолдер для невалидных карт
+             return "__"
         rank_int = Card.get_rank_int(card_int)
         suit_int = Card.get_suit_int(card_int)
-        # Добавим проверку на выход за пределы индексов
         if not (0 <= rank_int < len(Card.STR_RANKS)):
-             # print(f"Warning: Invalid rank_int {rank_int} from card {card_int}. Returning '__'.")
              return "__"
         if not (0 <= suit_int < len(Card.INT_SUIT_TO_CHAR)) or Card.INT_SUIT_TO_CHAR[suit_int] == 'x':
-             # print(f"Warning: Invalid suit_int {suit_int} from card {card_int}. Returning '__'.")
              return "__"
         return Card.STR_RANKS[rank_int] + Card.INT_SUIT_TO_CHAR[suit_int]
 
@@ -122,11 +116,10 @@ class Card: # Оставляем класс для удобства исполь
 
     # --- Функции, необходимые для 5-карточного эвалуатора ---
     @staticmethod
-    def prime_product_from_hand(card_ints: List[int]) -> int:
+    def prime_product_from_hand(card_ints: List[int]) -> int: # Используем импортированный List
         """ Calculates the prime product from a list of integer cards. """
         product = 1
         for c in card_ints:
-            # Используем get_prime для извлечения простого числа
             product *= Card.get_prime(c)
         return product
 
@@ -134,15 +127,14 @@ class Card: # Оставляем класс для удобства исполь
     def prime_product_from_rankbits(rankbits: int) -> int:
         """ Calculates the prime product from the rank bits. """
         product = 1
-        for i in Card.INT_RANKS: # Перебираем все возможные ранги (0-12)
-            # if the ith bit is set in rankbits
+        for i in Card.INT_RANKS:
             if rankbits & (1 << i):
                 product *= Card.PRIMES[i]
         return product
 
     # --- Вспомогательные функции ---
     @staticmethod
-    def hand_to_binary(card_strs: List[str]) -> List[int]:
+    def hand_to_binary(card_strs: List[str]) -> List[int]: # Используем импортированный List
         """ Converts a list of card strings to a list of integer representations. """
         return [Card.new(c) for c in card_strs]
 
@@ -152,7 +144,6 @@ class Card: # Оставляем класс для удобства исполь
         rank_int = Card.get_rank_int(card_int)
         suit_int = Card.get_suit_int(card_int)
 
-        # Проверка валидности перед доступом к словарям/спискам
         if not (0 <= rank_int < len(Card.STR_RANKS)): return "[?]"
         suit_sym = Card.PRETTY_SUITS.get(suit_int)
         if suit_sym is None: return "[?]"
@@ -160,15 +151,14 @@ class Card: # Оставляем класс для удобства исполь
         r = Card.STR_RANKS[rank_int]
         s = suit_sym
 
-        # Опциональная раскраска (если termcolor установлен)
         try:
             from termcolor import colored
             if suit_int in Card.PRETTY_REDS:
                 s = colored(s, "red")
         except ImportError:
-            pass # termcolor не установлен, пропускаем раскраску
+            pass
 
-        return f"[{r}{s}]" # Более компактный вид
+        return f"[{r}{s}]"
 
     @staticmethod
     def print_pretty_card(card_int: int):
@@ -176,7 +166,7 @@ class Card: # Оставляем класс для удобства исполь
         print(Card.int_to_pretty_str(card_int))
 
     @staticmethod
-    def print_pretty_cards(card_ints: List[int]):
+    def print_pretty_cards(card_ints: List[int]): # Используем импортированный List
         """ Prints a list of pretty card strings to the console. """
         print(" ".join(Card.int_to_pretty_str(c) for c in card_ints))
 
@@ -185,12 +175,8 @@ def card_from_str(string: str) -> int:
     """Alias for Card.new()"""
     return Card.new(string)
 
-def card_to_str(card_int: Optional[int]) -> str:
+def card_to_str(card_int: Optional[int]) -> str: # Используем импортированный Optional
     """Alias for Card.int_to_str(), handles None."""
     if card_int is None:
         return "__"
     return Card.int_to_str(card_int)
-
-# evaluate_hand не нужна, так как scoring.py вызывает конкретные эвалуаторы
-# def evaluate_hand(*cards):
-#     raise NotImplementedError("evaluate_hand is deprecated. Use specific evaluators via scoring.py.")
